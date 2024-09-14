@@ -9,9 +9,9 @@ spec:
     server: https://kubernetes.default.svc
   project: default
   source:
-    repoURL: git@github.com:eduloginc/karros-devops.git
+    repoURL: https://github.com/triethuynh1408/devops-elsa-exam.git
     targetRevision: HEAD
-    path: env/dev
+    path: deployment/env/dev
 
 
 
