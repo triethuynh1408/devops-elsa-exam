@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-mongodb
+  namespace: argocd
+
+spec:
+  destination:
+    namespace: dev
+    server: {{ .Values.spec.destination.server }}
+  project: dev
+  source:
+    path: helm-charts/mongodb
+    helm:
+      valueFiles:
+      - mongodb.yaml
+      parameters: []
+    repoURL: {{ .Values.spec.source.repoURL }}
+    targetRevision: HEAD
+  syncPolicy: {}
