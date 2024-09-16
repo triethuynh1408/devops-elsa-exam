@@ -1,0 +1,9 @@
+type: S3
+config:
+  bucket: "karros-nonprod-prom"
+  endpoint: "s3.us-west-2.amazonaws.com"
+  region: "us-west-2"
+  insecure: false
+  signature_version2: false
+  put_user_metadata:
+      "X-Amz-Acl": "bucket-owner-full-control"

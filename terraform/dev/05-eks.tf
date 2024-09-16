@@ -1,258 +1,281 @@
-### Prepare components ###
-resource "aws_kms_key" "eks" {
-  description             = "EKS Secret Encryption Key"
-  deletion_window_in_days = 7
-  enable_key_rotation     = true
+# ### Prepare components ###
+# resource "aws_kms_key" "eks" {
+#   description             = "EKS Secret Encryption Key"
+#   deletion_window_in_days = 7
+#   enable_key_rotation     = true
 
-  tags = local.tags
-}
+#   tags = local.tags
+# }
 
-data "aws_ami" "eks_default" {
-  most_recent = true
-  owners      = ["amazon"]
+# data "aws_ami" "eks_default" {
+#   most_recent = true
+#   owners      = ["amazon"]
 
-  filter {
-    name   = "name"
-    values = ["amazon-eks-node-${local.cluster_version}-v*"]
-  }
-}
+#   filter {
+#     name   = "name"
+#     values = ["amazon-eks-node-${local.cluster_version}-v*"]
+#   }
+# }
 
-### Install EKS Cluster ###
-module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "~> 18.0"
+# provider "kubernetes" {
+#   host = module.eks.cluster_endpoint
+#   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  
+#   exec {
+#     api_version = "client.authentication.k8s.io/v1beta1"
+#     command     = "aws"
+#     args = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+#   }
+# }
 
-  cluster_name                    = local.name
-  cluster_version                 = local.cluster_version
-  cluster_endpoint_private_access = true
-  cluster_endpoint_public_access  = true
+# ### Install EKS Cluster ###
+# module "eks" {
+#   source  = "terraform-aws-modules/eks/aws"
+#   version = "~> 18.0"
 
-  create_cloudwatch_log_group = false
+#   cluster_name                    = local.name
+#   cluster_version                 = local.cluster_version
+#   cluster_endpoint_private_access = true
+#   cluster_endpoint_public_access  = true
 
-  cluster_addons = {
-    coredns = {
-      most_recent = true
-    }
-    kube-proxy = {
-      most_recent = true
-    }
-    vpc-cni = {
-      most_recent = true
-    }
-    aws-ebs-csi-driver = {
-      service_account_role_arn = module.irsa-ebs-csi.iam_role_arn
-      most_recent = true
-    }
-  }
+#   create_cloudwatch_log_group = false
 
-  cluster_encryption_config = [{
-    provider_key_arn = aws_kms_key.eks.arn
-    resources        = ["secrets"]
-  }]
+#   cluster_addons = {
+#     coredns = {
+#       most_recent = true
+#     }
+#     kube-proxy = {
+#       most_recent = true
+#     }
+#     vpc-cni = {
+#       most_recent = true
+#     }
+#     aws-ebs-csi-driver = {
+#       service_account_role_arn = module.irsa-ebs-csi.iam_role_arn
+#       most_recent = true
+#     }
+#   }
 
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnets
+#   cluster_encryption_config = [{
+#     provider_key_arn = aws_kms_key.eks.arn
+#     resources        = ["secrets"]
+#   }]
 
-  # Extend cluster security group rules
-  cluster_security_group_additional_rules = {
-    ops_private_access_egress = {
-      description = "Ops Private Egress"
-      protocol    = "-1"
-      from_port   = 0
-      to_port     = 0
-      type        = "egress"
-      cidr_blocks = ["10.1.0.0/16"]
-    }
-    ops_private_access_ingress = {
-      description = "Ops Private Ingress"
-      protocol    = "-1"
-      from_port   = 0
-      to_port     = 0
-      type        = "ingress"
-      cidr_blocks = ["10.1.0.0/16"]
-    }
-    egress_nodes_ephemeral_ports_tcp = {
-      description                = "To node 1025-65535"
-      protocol                   = "tcp"
-      from_port                  = 1025
-      to_port                    = 65535
-      type                       = "egress"
-      source_node_security_group = true
-    }
-  }
+#   vpc_id     = module.vpc.vpc_id
+#   subnet_ids = module.vpc.private_subnets
 
-  enable_cluster_creator_admin_permissions = true
+#   # Extend cluster security group rules
+#   cluster_security_group_additional_rules = {
+#     ops_private_access_egress = {
+#       description = "Ops Private Egress"
+#       protocol    = "-1"
+#       from_port   = 0
+#       to_port     = 0
+#       type        = "egress"
+#       cidr_blocks = ["10.1.0.0/16"]
+#     }
+#     ops_private_access_ingress = {
+#       description = "Ops Private Ingress"
+#       protocol    = "-1"
+#       from_port   = 0
+#       to_port     = 0
+#       type        = "ingress"
+#       cidr_blocks = ["10.1.0.0/16"]
+#     }
+#     egress_nodes_ephemeral_ports_tcp = {
+#       description                = "To node 1025-65535"
+#       protocol                   = "tcp"
+#       from_port                  = 1025
+#       to_port                    = 65535
+#       type                       = "egress"
+#       source_node_security_group = true
+#     }
+#   }
 
-  enable_irsa = true
+# #   enable_cluster_creator_admin_permissions = true
 
-  openid_connect_audiences = ["sts.amazonaws.com"]
+#   enable_irsa = true
 
-  node_security_group_additional_rules = {
-    ingress_self_all = {
-      description = "Node to node all ports/protocols"
-      protocol    = "-1"
-      from_port   = 0
-      to_port     = 0
-      type        = "ingress"
-      self        = true
-    }
-    egress_all = {
-      description      = "Node all egress"
-      protocol         = "-1"
-      from_port        = 0
-      to_port          = 0
-      type             = "egress"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = ["::/0"]
-    }
-  }
+#   openid_connect_audiences = ["sts.amazonaws.com"]
 
-  eks_managed_node_groups = {
-    statefulset = {
-      name    = "${var.env}-sts-nodes"
-      subnet_ids  = [module.vpc.private_subnets[3]]
-      min_size     = 2
-      max_size     = 10
-      desired_size = 2
+#   node_security_group_additional_rules = {
+#     ingress_self_all = {
+#       description = "Node to node all ports/protocols"
+#       protocol    = "-1"
+#       from_port   = 0
+#       to_port     = 0
+#       type        = "ingress"
+#       self        = true
+#     }
+#     egress_all = {
+#       description      = "Node all egress"
+#       protocol         = "-1"
+#       from_port        = 0
+#       to_port          = 0
+#       type             = "egress"
+#       cidr_blocks      = ["0.0.0.0/0"]
+#       ipv6_cidr_blocks = ["::/0"]
+#     }
+#   }
 
-      iam_role_additional_policies = [
-        "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-          "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-      ]
+#   eks_managed_node_groups = {
+#     statefulset = {
+#       name    = "${var.env}-sts-nodes"
+#       subnet_ids  = [module.vpc.private_subnets[3]]
+#       min_size     = 2
+#       max_size     = 10
+#       desired_size = 2
 
-      ami_id  = data.aws_ami.eks_default.image_id
-      enable_bootstrap_user_data = true
-      bootstrap_extra_args       = "--container-runtime containerd --kubelet-extra-args '--node-labels nodeType=non-disruption --node-labels node.kubernetes.io/lifecycle=ondemand --node-labels node_group=sts --image-gc-low-threshold=50 --image-gc-high-threshold=70 --kube-reserved memory=300Mi,ephemeral-storage=1Gi --system-reserved memory=300Mi,ephemeral-storage=1Gi --eviction-hard memory.available<1Gi,nodefs.available<10%'"
+#       iam_role_additional_policies = [
+#         "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+#           "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+#       ]
 
-      pre_bootstrap_user_data = <<-EOT
-      export CONTAINER_RUNTIME="containerd"
-      export USE_MAX_PODS=true
-      EOT
+#       ami_id  = data.aws_ami.eks_default.image_id
+#       enable_bootstrap_user_data = true
+#       bootstrap_extra_args       = "--container-runtime containerd --kubelet-extra-args '--node-labels nodeType=non-disruption --node-labels node.kubernetes.io/lifecycle=ondemand --node-labels node_group=sts --image-gc-low-threshold=50 --image-gc-high-threshold=70 --kube-reserved memory=300Mi,ephemeral-storage=1Gi --system-reserved memory=300Mi,ephemeral-storage=1Gi --eviction-hard memory.available<1Gi,nodefs.available<10%'"
 
-      post_bootstrap_user_data = <<-EOT
-      echo "you are free little kubelet!"
-      EOT
-      instance_types = ["t3.large"]
-      capacity_type  = "ON_DEMAND"
-      force_update_version = true
+#       pre_bootstrap_user_data = <<-EOT
+#       export CONTAINER_RUNTIME="containerd"
+#       export USE_MAX_PODS=true
+#       EOT
 
-      ebs_optimized           = true
-      disable_api_termination = false
-      enable_monitoring       = true
+#       post_bootstrap_user_data = <<-EOT
+#       echo "you are free little kubelet!"
+#       EOT
+#       instance_types = ["t3.large"]
+#       capacity_type  = "ON_DEMAND"
+#       force_update_version = true
 
-      block_device_mappings = {
-        xvda = {
-          device_name = "/dev/xvda"
-          ebs = {
-            volume_size           = 30
-            volume_type           = "gp3"
-            iops                  = 3000
-            throughput            = 150
-            delete_on_termination = true
-            encrypted             = true
-          }
-        }
-      }
+#       ebs_optimized           = true
+#       disable_api_termination = false
+#       enable_monitoring       = true
 
-      labels = {
-        "nodeType"  = "non-disruption"
-      }
-      taints = {
-        dedicated = {
-          key = "dedicated"
-          value = "statefulset"
-          effect = "NO_SCHEDULE"
-        }
-      }
-      tags = merge(local.tags,{
-        "nodeType"  = "non-disruption"
-      })
-    }
+#       block_device_mappings = {
+#         xvda = {
+#           device_name = "/dev/xvda"
+#           ebs = {
+#             volume_size           = 30
+#             volume_type           = "gp3"
+#             iops                  = 3000
+#             throughput            = 150
+#             delete_on_termination = true
+#             encrypted             = true
+#           }
+#         }
+#       }
 
-    application = {
-      name    = "${var.env}-app-nodes"
-      subnet_ids  = [module.vpc.private_subnets[0],module.vpc.private_subnets[1],module.vpc.private_subnets[2]]
-      min_size     = 1
-      max_size     = 10
-      desired_size = 1
+#       labels = {
+#         "nodeType"  = "non-disruption"
+#       }
+#       taints = {
+#         dedicated = {
+#           key = "dedicated"
+#           value = "statefulset"
+#           effect = "NO_SCHEDULE"
+#         }
+#       }
+#       tags = merge(local.tags,{
+#         "nodeType"  = "non-disruption"
+#       })
+#     }
 
-      iam_role_additional_policies = [
-          "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-          "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-      ]
+#     application = {
+#       name    = "${var.env}-app-nodes"
+#       subnet_ids  = [module.vpc.private_subnets[0],module.vpc.private_subnets[1],module.vpc.private_subnets[2]]
+#       min_size     = 1
+#       max_size     = 10
+#       desired_size = 1
 
-      ami_id  = data.aws_ami.eks_default.image_id
-      enable_bootstrap_user_data = true
-      bootstrap_extra_args       = "--container-runtime containerd --kubelet-extra-args '--node-labels nodeType=disruption --node-labels node.kubernetes.io/lifecycle=spot --node-labels node_group=app --image-gc-low-threshold=50 --image-gc-high-threshold=70 --kube-reserved memory=300Mi,ephemeral-storage=1Gi --system-reserved memory=300Mi,ephemeral-storage=1Gi --eviction-hard memory.available<1Gi,nodefs.available<10%'"
+#       iam_role_additional_policies = [
+#           "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+#           "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+#       ]
 
-      pre_bootstrap_user_data = <<-EOT
-      export CONTAINER_RUNTIME="containerd"
-      export USE_MAX_PODS=true
-      EOT
+#       ami_id  = data.aws_ami.eks_default.image_id
+#       enable_bootstrap_user_data = true
+#       bootstrap_extra_args       = "--container-runtime containerd --kubelet-extra-args '--node-labels nodeType=disruption --node-labels node.kubernetes.io/lifecycle=spot --node-labels node_group=app --image-gc-low-threshold=50 --image-gc-high-threshold=70 --kube-reserved memory=300Mi,ephemeral-storage=1Gi --system-reserved memory=300Mi,ephemeral-storage=1Gi --eviction-hard memory.available<1Gi,nodefs.available<10%'"
 
-      instance_types = ["t3.medium"]
-      capacity_type  = "SPOT"
-      force_update_version = true
+#       pre_bootstrap_user_data = <<-EOT
+#       export CONTAINER_RUNTIME="containerd"
+#       export USE_MAX_PODS=true
+#       EOT
 
-      ebs_optimized           = true
-      disable_api_termination = false
-      enable_monitoring       = true
+#       instance_types = ["t3.medium"]
+#       capacity_type  = "SPOT"
+#       force_update_version = true
 
-      block_device_mappings = {
-        xvda = {
-          device_name = "/dev/xvda"
-          ebs = {
-            volume_size           = 30
-            volume_type           = "gp3"
-            iops                  = 3000
-            throughput            = 150
-            delete_on_termination = true
-            encrypted             = true
-          }
-        }
-      }
+#       ebs_optimized           = true
+#       disable_api_termination = false
+#       enable_monitoring       = true
 
-      labels = {
-        "nodeType"  = "disruption"
-      }
-      tags = merge(local.tags,{
-        "nodeType"  = "disruption"
-      })
-    }
-  }
-}
+#       block_device_mappings = {
+#         xvda = {
+#           device_name = "/dev/xvda"
+#           ebs = {
+#             volume_size           = 30
+#             volume_type           = "gp3"
+#             iops                  = 3000
+#             throughput            = 150
+#             delete_on_termination = true
+#             encrypted             = true
+#           }
+#         }
+#       }
 
-### Install Add-ons 
-#### AWS EBS CSI Driver ####
-data "aws_iam_policy" "ebs_csi_policy" {
-  arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-}
+#       labels = {
+#         "nodeType"  = "disruption"
+#       }
+#       tags = merge(local.tags,{
+#         "nodeType"  = "disruption"
+#       })
+#     }
+#   }
+# }
 
-module "irsa-ebs-csi" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version = "5.39.0"
+# ### Install Add-ons ###
+# #### AWS EBS CSI Driver ####
+# data "aws_iam_policy" "ebs_csi_policy" {
+#   arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+# }
 
-  create_role                   = true
-  role_name                     = "AmazonEKSTFEBSCSIRole-${module.eks.cluster_name}"
-  provider_url                  = module.eks.oidc_provider
-  role_policy_arns              = [data.aws_iam_policy.ebs_csi_policy.arn]
-  oidc_fully_qualified_subjects = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
-}
+# module "irsa-ebs-csi" {
+#   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
+#   version = "5.39.0"
 
-resource "kubernetes_storage_class" "ebs-sc" {
-  metadata {
-    name = "ebs-sc"
-    annotations = {
-      "storageclass.kubernetes.io/is-default-class" = true
-    }
-  }
-  storage_provisioner    = "ebs.csi.aws.com"
-  allow_volume_expansion = true
-  volume_binding_mode    = "WaitForFirstConsumer"
-  reclaim_policy         = "Retain"
-  parameters = {
-    type      = "gp3"
-    encrypted = true
-    fsType    = "ext4"
-  }
-}
+#   create_role                   = true
+#   role_name                     = "AmazonEKSTFEBSCSIRole-${module.eks.cluster_name}"
+#   provider_url                  = module.eks.oidc_provider
+#   role_policy_arns              = [data.aws_iam_policy.ebs_csi_policy.arn]
+#   oidc_fully_qualified_subjects = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
+# }
+
+# resource "kubernetes_storage_class" "ebs-sc" {
+#   metadata {
+#     name = "ebs-sc"
+#     annotations = {
+#       "storageclass.kubernetes.io/is-default-class" = true
+#     }
+#   }
+#   storage_provisioner    = "ebs.csi.aws.com"
+#   allow_volume_expansion = true
+#   volume_binding_mode    = "WaitForFirstConsumer"
+#   reclaim_policy         = "Retain"
+#   parameters = {
+#     type      = "gp3"
+#     encrypted = true
+#     fsType    = "ext4"
+#   }
+# }
+
+# ### Create Namespaces ###
+# resource "kubernetes_namespace" "namespace" {
+#   for_each = toset(local.namespaces)
+#   metadata {
+#     annotations = {
+#       name = each.value
+#     }
+
+#     name = each.value
+#   }
+# }

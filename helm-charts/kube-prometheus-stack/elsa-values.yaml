@@ -1,0 +1,96 @@
+nameOverride: "kube-prometheus-stack"
+grafana:
+  enabled: true
+  adminPassword: ENPGeD7yb0cF8A
+
+  persistence:
+    enabled: true
+    type: sts
+    storageClassName: ebs-sc
+    accessModes: ["ReadWriteOnce"]
+    size: 10Gi
+    finalizers:
+      - kubernetes.io/pvc-protection
+
+prometheusOperator:
+  enabled: false
+  
+prometheus:
+
+  prometheusSpec:
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+
+    nodeSelector:
+      nodeType: non-disruption
+
+    tolerations:
+    - key: dedicated
+      operator: Equal
+      value: statefulset
+
+    resources:
+      requests:
+        memory: 4Gi
+        
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: ebs-sc
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+    retention: 7d
+    retentionSize: "30GB"
+
+defaultRules:
+  rules:
+    etcd: false
+    kubeApiserverAvailability: false
+    kubeApiserverBurnrate: false
+    kubeApiserverHistogram: false
+    kubeApiserverSlos: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+
+
+kubeControllerManager:
+  enabled: false
+coreDns:
+  enabled: false
+kubeApiServer:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeStateMetrics:
+  enabled: true
+nodeExporter:
+  enabled: true
+
+### Alert Manager ###
+alertmanager:
+
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: ebs-sc
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+    tolerations:
+    - key: dedicated
+      operator: Equal
+      value: statefulset
+
+    nodeSelector:
+      nodeType: non-disruption
+
+  

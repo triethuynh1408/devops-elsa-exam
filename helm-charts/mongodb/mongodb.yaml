@@ -1,5 +1,5 @@
-# global:
-#   storageClass: "ebs-sc-encryption"
+global:
+  storageClass: "ebs-sc"
 
 fullnameOverride: "mongodb"
 
@@ -11,29 +11,19 @@ replicaCount: 1
 
 auth:
   enabled: false
-# nodeSelector:
-#   nodeType: non-disruption
+
 persistence:
   enabled: true
   size: 10Gi
 resources:
   requests:
-    memory: "512Mi"
+    memory: "2Gi"
     cpu: "1"
-# podAnnotations:
-#   karpenter.sh/do-not-evict: "true"
 
-# metrics:
-#   enabled: true
-#   image:
-#     registry: docker.io
-#     repository: bitnami/mongodb-exporter
-#     tag: 0.39.0-debian-11-r91
-#     pullPolicy: IfNotPresent
-#   serviceMonitor:
-#     enabled: true
-#     namespace: "develop-eks"
-#   livenessProbe:
-#     timeoutSeconds: 10
-#   readinessProbe:
-#     timeoutSeconds: 10  
+nodeSelector:
+  nodeType: non-disruption
+
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: statefulset
