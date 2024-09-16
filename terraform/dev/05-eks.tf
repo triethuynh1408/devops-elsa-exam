@@ -122,9 +122,9 @@
 #     statefulset = {
 #       name    = "${var.env}-sts-nodes"
 #       subnet_ids  = [module.vpc.private_subnets[3]]
-#       min_size     = 2
+#       min_size     = 3
 #       max_size     = 10
-#       desired_size = 2
+#       desired_size = 3
 
 #       iam_role_additional_policies = [
 #         "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
@@ -143,7 +143,7 @@
 #       post_bootstrap_user_data = <<-EOT
 #       echo "you are free little kubelet!"
 #       EOT
-#       instance_types = ["t3.large"]
+#       instance_types = ["m5.xlarge"]
 #       capacity_type  = "ON_DEMAND"
 #       force_update_version = true
 
@@ -183,9 +183,9 @@
 #     application = {
 #       name    = "${var.env}-app-nodes"
 #       subnet_ids  = [module.vpc.private_subnets[0],module.vpc.private_subnets[1],module.vpc.private_subnets[2]]
-#       min_size     = 1
+#       min_size     = 2
 #       max_size     = 10
-#       desired_size = 1
+#       desired_size = 2
 
 #       iam_role_additional_policies = [
 #           "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
@@ -201,7 +201,7 @@
 #       export USE_MAX_PODS=true
 #       EOT
 
-#       instance_types = ["t3.medium"]
+#       instance_types = ["m5.large"]
 #       capacity_type  = "SPOT"
 #       force_update_version = true
 
